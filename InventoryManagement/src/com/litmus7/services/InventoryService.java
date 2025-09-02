@@ -108,7 +108,7 @@ public class InventoryService {
         try {
             Path targetPath = Paths.get(targetFolder, file.getName());
             Files.createDirectories(targetPath.getParent());
-            Files.copy(file.toPath(), targetPath, StandardCopyOption.REPLACE_EXISTING);
+            Files.move(file.toPath(), targetPath, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             e.printStackTrace();
         }
