@@ -13,6 +13,7 @@ import java.util.List;
 import com.litmus7.dao.InventoryDAO;
 import com.litmus7.dto.Inventory;
 import com.litmus7.util.DatabaseConnectionUtil;
+import com.litmus7.util.Response;
 import com.litmus7.constants.FilePath;
 
 public class InventoryService {
@@ -22,29 +23,33 @@ public class InventoryService {
     private final InventoryDAO dao = new InventoryDAO();
 
     
-    public File[] getCsvFiles() {
+    public Response<File[],?,?> getCsvFiles() {
         File inputDir = new File(FilePath.INPUT_FOLDER);
         if (!inputDir.exists() || !inputDir.isDirectory()) {
-            return null;
+        	Response <File[],Boolean,?> response= new Response<>(null,null,null);
+            return response;
         }
-        return inputDir.listFiles((dir, name) -> name.endsWith(".csv"));
+        Response <File[],Boolean,?> response= new Response<>(inputDir.listFiles((dir, name) -> name.endsWith(".csv")),null,null);
+        return response;
     }
+    
 
     
-    public boolean processSingleFile(File csvFile) {
+    public Response<Boolean,?,?> processSingleFile(File csvFile) {
         Connection conn = null;
         boolean success = false;
 
         try {
 
-            List<Inventory> items = parseFileToInventoryList(csvFile);
+            List<Inventory> items = parseFileToInventoryList(csvFile).getData();
             if (items.isEmpty()) {
 
                 moveFile(csvFile, FilePath.ERROR_FOLDER);
-                return false;
+                Response<Boolean,?,?> response=new Response<>(false,null,null);
+                return response;
             }
 
-            // Transaction begin
+
             conn = DatabaseConnectionUtil.getConnection();
             conn.setAutoCommit(false);
 
@@ -70,12 +75,14 @@ public class InventoryService {
         {
             
         }
-
-        return success;
+        
+        Response<Boolean,?,?> response=new Response<>(success,null,null);
+        return response;
     }
 
 
-    private List<Inventory> parseFileToInventoryList(File csvFile) throws IOException {
+
+    private Response<List<Inventory>,?,?> parseFileToInventoryList(File csvFile) throws IOException {
         List<Inventory> items = new ArrayList<>();
         try (BufferedReader reader = new BufferedReader(new FileReader(csvFile))) {
             String line;
@@ -100,7 +107,8 @@ public class InventoryService {
                 items.add(new Inventory(sku, productName, quantity, price));
             }
         }
-        return items;
+        Response<List<Inventory>,?,?> response=new Response<>(items,null,null);
+        return response;
     }
 
     
@@ -108,7 +116,7 @@ public class InventoryService {
         try {
             Path targetPath = Paths.get(targetFolder, file.getName());
             Files.createDirectories(targetPath.getParent());
-            Files.move(file.toPath(), targetPath, StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(file.toPath(), targetPath, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             e.printStackTrace();
         }
