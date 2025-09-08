@@ -10,6 +10,8 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.logging.log4j.*;
+
 import com.litmus7.dao.InventoryDAO;
 import com.litmus7.dto.Inventory;
 import com.litmus7.util.DatabaseConnectionUtil;
@@ -19,17 +21,21 @@ import com.litmus7.constants.FilePath;
 public class InventoryService {
 
 	
+	private static final Logger logger = LogManager.getLogger(InventoryService.class);
 	
     private final InventoryDAO dao = new InventoryDAO();
 
     
     public Response<File[],?,?> getCsvFiles() {
         File inputDir = new File(FilePath.INPUT_FOLDER);
+        logger.trace("Opening folder: "+ inputDir);
         if (!inputDir.exists() || !inputDir.isDirectory()) {
         	Response <File[],Boolean,?> response= new Response<>(null,null,null);
+        	logger.error("No file found");
             return response;
         }
         Response <File[],Boolean,?> response= new Response<>(inputDir.listFiles((dir, name) -> name.endsWith(".csv")),null,null);
+        logger.info("Files returned after found");
         return response;
     }
     
@@ -43,8 +49,9 @@ public class InventoryService {
 
             List<Inventory> items = parseFileToInventoryList(csvFile).getData();
             if (items.isEmpty()) {
-
+            	logger.info(csvFile+" moved to error folder");
                 moveFile(csvFile, FilePath.ERROR_FOLDER);
+                
                 Response<Boolean,?,?> response=new Response<>(false,null,null);
                 return response;
             }
@@ -59,6 +66,7 @@ public class InventoryService {
             
             conn.commit();
             success = true;
+            logger.info(csvFile+" moved to processed folder");
             moveFile(csvFile, FilePath.PROCESSED_FOLDER);
 
         } catch (Exception e) {
@@ -96,6 +104,7 @@ public class InventoryService {
 
                 String[] parts = line.split(",");
                 if (parts.length != 4) {
+                	logger.error("No. of data mismatch");
                     throw new IOException("Invalid format in file: " + csvFile.getName());
                 }
 
